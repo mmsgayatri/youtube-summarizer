@@ -27,7 +27,7 @@ print("Video Code:", video_code)
 load_dotenv()
 
 # Configure the Google API key
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+genai.configure(api_key=os.getenv("AIzaSyAcCjCbYvY3nk9cGTSTq4Odw5wHoJxfyHQ"))
 prompt = "Act as a YouTube video summarizer. Take the transcript of the video and provide a summary within 200 words in "
 
 ## Getting the transcript data from YouTube videos
