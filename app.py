@@ -14,7 +14,7 @@ def extract_video_code(youtube_url):
         return None
 
 # Configure the Google API key directly (replace 'YOUR_GOOGLE_API_KEY' with your actual API key)
-genai.configure(api_key="AIzaSyAcCjCbYvY3nk9cGTSTq4Odw5wHoJxfyHQ")
+genai.configure(api_key="YOUR_GOOGLE_API_KEY")
 prompt_template = "Act as a YouTube video summarizer. Take the transcript of the video and provide a summary within 200 words in {}: "
 
 # Function to get transcript data from YouTube videos
@@ -67,14 +67,20 @@ if youtube_link and target_language:
         transcript_text, transcript_language = extract_transcript_details(youtube_link, target_language)
 
         if transcript_text:
-            prompt = prompt_template.format(target_language)
+            # Use a tailored prompt for English
+            if target_language == 'en':
+                prompt = "Act as a YouTube video summarizer. Summarize the transcript of the video in 200 words: "
+            else:
+                prompt = prompt_template.format(target_language)
+
             summary = generate_gemini_content(transcript_text, prompt)
 
-            # Double-check translation if the target language is not English
-            if transcript_language != target_language:
+            # Translate the summary only if the target language is not English
+            if target_language != 'en':
                 translator = Translator()
                 summary = translator.translate(summary, dest=target_language).text
 
             st.markdown("## Detailed Notes:")
             st.write(f"**Language:** {target_language}")
             st.write(summary)
+
