@@ -4,6 +4,24 @@ import os
 import google.generativeai as genai
 from youtube_transcript_api import YouTubeTranscriptApi
 from googletrans import Translator
+import re 
+import re
+
+def extract_video_code(youtube_url):
+    # Regular expression pattern to match the video code
+    pattern = r'(?:v=|\/)([0-9A-Za-z_-]{11}).*'
+    match = re.search(pattern, youtube_url)
+    
+    if match:
+        return match.group(1)
+    else:
+        return None
+
+# Example usage
+youtube_url = "https://youtu.be/tNrNLoCqzco?si=iwjkd2Y19RTIo9Br"
+video_code = extract_video_code(youtube_url)
+
+print("Video Code:", video_code)
 
 # Load environment variables
 load_dotenv()
