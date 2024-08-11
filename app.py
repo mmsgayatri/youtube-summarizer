@@ -14,7 +14,7 @@ def extract_video_code(youtube_url):
         return None
 
 # Configure the Google API key directly (replace 'YOUR_GOOGLE_API_KEY' with your actual API key)
-genai.configure(api_key="YOUR_GOOGLE_API_KEY")
+genai.configure(api_key="AIzaSyAcCjCbYvY3nk9cGTSTq4Odw5wHoJxfyHQ")
 prompt_template = "Act as a YouTube video summarizer. Take the transcript of the video and provide a summary within 200 words in {}: "
 
 # Function to get transcript data from YouTube videos
