@@ -1,12 +1,10 @@
 import streamlit as st
-from dotenv import load_dotenv
-import os
 import google.generativeai as genai
 from youtube_transcript_api import YouTubeTranscriptApi
 from googletrans import Translator
-import re 
 import re
 
+# Function to extract video code from YouTube URL
 def extract_video_code(youtube_url):
     # Regular expression pattern to match the video code
     pattern = r'(?:v=|\/)([0-9A-Za-z_-]{11}).*'
@@ -17,23 +15,14 @@ def extract_video_code(youtube_url):
     else:
         return None
 
-# Example usage
-youtube_url = "https://youtu.be/tNrNLoCqzco?si=iwjkd2Y19RTIo9Br"
-video_code = extract_video_code(youtube_url)
-
-print("Video Code:", video_code)
-
-# Load environment variables
-load_dotenv()
-
-# Configure the Google API key
-genai.configure(api_key=os.getenv("AIzaSyAcCjCbYvY3nk9cGTSTq4Odw5wHoJxfyHQ"))
+# Configure the Google API key directly (repla)
+genai.configure(api_key="AIzaSyAcCjCbYvY3nk9cGTSTq4Odw5wHoJxfyHQ")
 prompt = "Act as a YouTube video summarizer. Take the transcript of the video and provide a summary within 200 words in "
 
-## Getting the transcript data from YouTube videos
+# Function to get transcript data from YouTube videos
 def extract_transcript_details(youtube_video_url, target_language):
     try:
-        video_id = youtube_video_url.split("=")[1]
+        video_id = extract_video_code(youtube_video_url)
         
         # Retrieve the available transcripts
         transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
@@ -90,7 +79,7 @@ youtube_link = st.text_input("Enter your YouTube Link:")
 target_language = st.text_input("Enter the target language code (e.g., 'en' for English, 'es' for Spanish):", value="en")
 
 if youtube_link and target_language:
-    video_id = youtube_link.split("=")[1]
+    video_id = extract_video_code(youtube_link)
     st.image(f"http://img.youtube.com/vi/{video_id}/0.jpg", use_column_width=True)
 
     if st.button("Get Detailed Notes"):
