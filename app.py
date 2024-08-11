@@ -1,6 +1,6 @@
 import streamlit as st
 import google.generativeai as genai
-from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled
 from googletrans import Translator
 import re
 
@@ -22,6 +22,9 @@ def extract_transcript_details(youtube_video_url, target_language):
     try:
         video_id = extract_video_code(youtube_video_url)
         
+        if not video_id:
+            return None, None
+
         # Retrieve the available transcripts
         transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
         
@@ -45,8 +48,12 @@ def extract_transcript_details(youtube_video_url, target_language):
         
         return transcript_text, transcript_language
 
+    except TranscriptsDisabled:
+        st.error("Transcripts are disabled for this video. Please check if the video has captions or subtitles enabled.")
+        return None, None
     except Exception as e:
-        raise e
+        st.error(f"An error occurred: {e}")
+        return None, None
 
 # Generate summary based on the prompt
 def generate_gemini_content(transcript_text, prompt):
@@ -61,25 +68,27 @@ target_language = st.text_input("Enter the target language code (e.g., 'en' for 
 
 if youtube_link and target_language:
     video_id = extract_video_code(youtube_link)
-    st.image(f"http://img.youtube.com/vi/{video_id}/0.jpg", use_column_width=True)
+    if video_id:
+        st.image(f"http://img.youtube.com/vi/{video_id}/0.jpg", use_column_width=True)
 
-    if st.button("Get Detailed Notes"):
-        transcript_text, transcript_language = extract_transcript_details(youtube_link, target_language)
+        if st.button("Get Detailed Notes"):
+            transcript_text, transcript_language = extract_transcript_details(youtube_link, target_language)
 
-        if transcript_text:
-            # Use a tailored prompt for English
-            if target_language == 'en':
-                prompt = "Act as a YouTube video summarizer. Summarize the transcript of the video in 200 words: "
-            else:
-                prompt = prompt_template.format(target_language)
+            if transcript_text:
+                # Use a tailored prompt for English
+                if target_language == 'en':
+                    prompt = "Act as a YouTube video summarizer. Summarize the transcript of the video in 200 words: "
+                else:
+                    prompt = prompt_template.format(target_language)
 
-            summary = generate_gemini_content(transcript_text, prompt)
+                summary = generate_gemini_content(transcript_text, prompt)
 
-            # Translate the summary only if the target language is not English
-            if target_language != 'en':
-                translator = Translator()
-                summary = translator.translate(summary, dest=target_language).text
+                # Translate the summary only if the target language is not English
+                if target_language != 'en':
+                    translator = Translator()
+                    summary = translator.translate(summary, dest=target_language).text
 
-            st.markdown("## Detailed Notes:")
-            st.write(f"**Language:** {target_language}")
-            st.write(summary)
+                st.markdown("## Detailed Notes:")
+                st.write(f"**Language:** {target_language}")
+                st.write(summary)
+
