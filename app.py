@@ -6,18 +6,16 @@ import re
 
 # Function to extract video code from YouTube URL
 def extract_video_code(youtube_url):
-    # Regular expression pattern to match the video code
     pattern = r'(?:v=|\/)([0-9A-Za-z_-]{11}).*'
     match = re.search(pattern, youtube_url)
-    
     if match:
         return match.group(1)
     else:
         return None
 
-# Configure the Google API key directly (repla)
+# Configure the Google API key directly (replace 'YOUR_GOOGLE_API_KEY' with your actual API key)
 genai.configure(api_key="AIzaSyAcCjCbYvY3nk9cGTSTq4Odw5wHoJxfyHQ")
-prompt = "Act as a YouTube video summarizer. Take the transcript of the video and provide a summary within 200 words in "
+prompt_template = "Act as a YouTube video summarizer. Take the transcript of the video and provide a summary within 200 words in {}: "
 
 # Function to get transcript data from YouTube videos
 def extract_transcript_details(youtube_video_url, target_language):
@@ -27,24 +25,13 @@ def extract_transcript_details(youtube_video_url, target_language):
         # Retrieve the available transcripts
         transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
         
-        # Initialize variables to store the transcript details
         transcript_text = ""
         transcript_language = target_language
         
         # Iterate over all available transcripts to find the most suitable one
         for transcript in transcript_list:
-            print(
-                transcript.video_id,
-                transcript.language,
-                transcript.language_code,
-                transcript.is_generated,
-                transcript.is_translatable,
-                transcript.translation_languages,
-            )
-            
-            # Fetch the actual transcript data
             transcript_data = transcript.fetch()
-            
+
             # Translate the transcript to the target language if necessary
             if transcript.language_code != target_language and transcript.is_translatable:
                 transcript = transcript.translate(target_language)
@@ -67,12 +54,6 @@ def generate_gemini_content(transcript_text, prompt):
     response = model.generate_content(prompt + transcript_text)
     return response.text
 
-# Translate text to the target language
-def translate_text(text, target_language):
-    translator = Translator()
-    translated = translator.translate(text, dest=target_language)
-    return translated.text
-
 # Streamlit app UI
 st.title("YouTube Transcript to Detailed Notes Converter")
 youtube_link = st.text_input("Enter your YouTube Link:")
@@ -86,9 +67,14 @@ if youtube_link and target_language:
         transcript_text, transcript_language = extract_transcript_details(youtube_link, target_language)
 
         if transcript_text:
+            prompt = prompt_template.format(target_language)
             summary = generate_gemini_content(transcript_text, prompt)
-            if target_language != 'en':  # Only translate if the target language is not English
-                summary = translate_text(summary, target_language)
+
+            # Double-check translation if the target language is not English
+            if transcript_language != target_language:
+                translator = Translator()
+                summary = translator.translate(summary, dest=target_language).text
+
             st.markdown("## Detailed Notes:")
             st.write(f"**Language:** {target_language}")
             st.write(summary)
