@@ -1,6 +1,5 @@
-youtube_transcript_api
 streamlit
-google-generativeai
 python-dotenv
-pathlib
+google-generativeai
+youtube-transcript-api
 googletrans==4.0.0-rc1
