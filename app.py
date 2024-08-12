@@ -45,10 +45,12 @@ def extract_transcript_details(youtube_video_url, target_language):
     transcript_data = fetch_transcript(video_id)
     if transcript_data:
         transcript_text = " ".join(item["text"] for item in transcript_data)
+        
         # Translate the transcript to the target language if necessary
         if target_language and target_language != 'en':
             translator = Translator()
             transcript_text = translator.translate(transcript_text, dest=target_language).text
+        
         return transcript_text, target_language
 
     st.error("No transcripts or subtitles available for this video.")
@@ -62,6 +64,8 @@ def generate_gemini_content(transcript_text, prompt):
 
 # Translate text to the target language
 def translate_text(text, target_language):
+    if target_language == 'en':
+        return text
     translator = Translator()
     translated = translator.translate(text, dest=target_language)
     return translated.text
@@ -81,8 +85,7 @@ if youtube_link and target_language:
 
         if transcript_text:
             summary = generate_gemini_content(transcript_text, prompt)
-            if target_language and target_language != 'en':  # Only translate if the target language is not English
-                summary = translate_text(summary, target_language)
+            summary = translate_text(summary, target_language)
             st.markdown("## Detailed Notes:")
             st.write(f"**Language:** {target_language}")
             st.write(summary)
