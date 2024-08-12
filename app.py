@@ -4,6 +4,7 @@ import google.generativeai as genai
 from youtube_transcript_api import YouTubeTranscriptApi
 from googletrans import Translator
 
+# Set your API key directly
 genai.configure(api_key="AIzaSyAcCjCbYvY3nk9cGTSTq4Odw5wHoJxfyHQ")
 
 # Regular expression to extract video code
@@ -41,6 +42,9 @@ def translate_summary(summary, target_language):
     translator = Translator()
     translation = translator.translate(summary, dest=target_language)
     return translation.text
+
+# Define the prompt variable
+prompt = "Act as a YouTube video summarizer which will take the transcript of the video and provide the summary within 200 words. Provide the summary of the text given."
 
 st.title("YouTube Transcript to Detailed Notes Converter")
 youtube_link = st.text_input("Enter your YouTube Link:")
