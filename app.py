@@ -27,20 +27,31 @@ def extract_transcript_details(youtube_video_url, target_language):
         transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
         
         transcript_text = ""
+        found_transcript = False
+        
         for transcript in transcript_list:
-            if transcript.language_code != target_language and transcript.is_translatable:
-                transcript = transcript.translate(target_language)
-            
-            transcript_data = transcript.fetch()
-            for i in transcript_data:
-                transcript_text += " " + i["text"]
-            
-            break  # Use the first suitable transcript found
+            if transcript.language_code == target_language:
+                transcript_data = transcript.fetch()
+                for i in transcript_data:
+                    transcript_text += " " + i["text"]
+                found_transcript = True
+                break  # Use the first suitable transcript found
+            elif transcript.is_translatable and transcript.language_code != target_language:
+                # Translate if needed
+                translated_transcript = transcript.translate(target_language)
+                transcript_data = translated_transcript.fetch()
+                for i in transcript_data:
+                    transcript_text += " " + i["text"]
+                found_transcript = True
+                break  # Use the first suitable transcript found
+        
+        if not found_transcript:
+            raise NoTranscriptFound("No suitable transcript found for the specified language.")
         
         return transcript_text
 
-    except NoTranscriptFound:
-        st.error("Transcript not found for the given video.")
+    except NoTranscriptFound as e:
+        st.error(e)
         return None
     except ValueError as ve:
         st.error(ve)
@@ -83,4 +94,3 @@ if st.button("Get Detailed Notes"):
         
         st.markdown("## Detailed Notes:")
         st.write(summary)
-
