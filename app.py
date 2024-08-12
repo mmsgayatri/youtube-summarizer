@@ -1,10 +1,9 @@
-import re  # Ensure re module is imported
+import re
 import streamlit as st
 import google.generativeai as genai
-from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound
 from googletrans import Translator
 
-# Set your API key directly
 genai.configure(api_key="AIzaSyAcCjCbYvY3nk9cGTSTq4Odw5wHoJxfyHQ")
 
 # Regular expression to extract video code
@@ -21,15 +20,31 @@ def extract_video_code(youtube_url):
 def extract_transcript_details(youtube_video_url, language='en'):
     try:
         video_id = extract_video_code(youtube_video_url)
-        transcript_text = YouTubeTranscriptApi.get_transcript(video_id, languages=[language])
+        if not video_id:
+            raise ValueError("Invalid YouTube URL")
+        
+        # Check available languages
+        available_languages = YouTubeTranscriptApi.list_transcripts(video_id).language_codes
 
+        if language not in available_languages:
+            st.error(f"No transcript available for the language: {language}")
+            return None
+
+        transcript_text = YouTubeTranscriptApi.get_transcript(video_id, languages=[language])
         transcript = ""
         for i in transcript_text:
             transcript += " " + i["text"]
         return transcript
 
+    except NoTranscriptFound:
+        st.error("Transcript not found for the given video.")
+        return None
+    except ValueError as ve:
+        st.error(ve)
+        return None
     except Exception as e:
-        raise e
+        st.error(f"An error occurred: {e}")
+        return None
 
 # Generate summary based on the prompt 
 def generate_gemini_content(transcript_text, prompt):
