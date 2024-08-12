@@ -3,7 +3,7 @@ import google.generativeai as genai
 from youtube_transcript_api import YouTubeTranscriptApi
 from googletrans import Translator
 
-genai.configure(api_key="AIzaSyAcCjCbYvY3nk9cGTSTq4Odw5wHoJxfyHQ"")
+genai.configure(api_key="AIzaSyAcCjCbYvY3nk9cGTSTq4Odw5wHoJxfyHQ")
 
 # Regular expression to extract video code
 def extract_video_code(youtube_url):
