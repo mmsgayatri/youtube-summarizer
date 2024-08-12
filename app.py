@@ -1,3 +1,4 @@
+import re  # Ensure re module is imported
 import streamlit as st
 import google.generativeai as genai
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -61,4 +62,3 @@ if st.button("Get Detailed Notes"):
         
         st.markdown("## Detailed Notes:")
         st.write(summary)
-
