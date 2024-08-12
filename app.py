@@ -1,10 +1,9 @@
-import re
 import streamlit as st
-import google.generativeai as genai
-from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
-from googletrans import Translator
 from dotenv import load_dotenv
 import os
+import google.generativeai as genai
+from youtube_transcript_api import YouTubeTranscriptApi
+from googletrans import Translator
 
 # Load environment variables
 load_dotenv()
@@ -28,11 +27,9 @@ def fetch_transcript(video_id):
         # Fetch the first available transcript
         for transcript in transcripts:
             transcript_data = transcript.fetch()
-            return transcript_data
-    except NoTranscriptFound:
-        return None
-    except TranscriptsDisabled:
-        return None
+            return transcript_data, transcript.language_code
+    except (NoTranscriptFound, TranscriptsDisabled):
+        return None, None
 
 # Extract and concatenate transcript text
 def extract_transcript_details(youtube_video_url, target_language):
@@ -42,16 +39,14 @@ def extract_transcript_details(youtube_video_url, target_language):
         return None, None
 
     # Attempt to fetch the transcript
-    transcript_data = fetch_transcript(video_id)
+    transcript_data, transcript_language = fetch_transcript(video_id)
     if transcript_data:
         transcript_text = " ".join(item["text"] for item in transcript_data)
-        
         # Translate the transcript to the target language if necessary
         if target_language and target_language != 'en':
             translator = Translator()
             transcript_text = translator.translate(transcript_text, dest=target_language).text
-        
-        return transcript_text, target_language
+        return transcript_text, transcript_language
 
     st.error("No transcripts or subtitles available for this video.")
     return None, None
@@ -65,7 +60,7 @@ def generate_gemini_content(transcript_text, prompt):
 # Translate text to the target language
 def translate_text(text, target_language):
     if target_language == 'en':
-        return text
+        return text  # No translation needed if target language is English
     translator = Translator()
     translated = translator.translate(text, dest=target_language)
     return translated.text
