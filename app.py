@@ -1,96 +1,109 @@
-import re
 import streamlit as st
+from dotenv import load_dotenv
+import os
+import re
 import google.generativeai as genai
-from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound
+from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api._errors import NoTranscriptFound, TranscriptsDisabled
 from googletrans import Translator
+import time
 
-# Configure the Google API key directly
-genai.configure(api_key="AIzaSyAcCjCbYvY3nk9cGTSTq4Odw5wHoJxfyHQ")
+# Load environment variables
+load_dotenv()
 
-# Regular expression to extract video code
+# Configure the Google API key
+genai.configure(api_key=os.getenv("AIzaSyAcCjCbYvY3nk9cGTSTq4Odw5wHoJxfyHQ"))
+
+# Define the prompt for summarization
+prompt = "Act as a YouTube video summarizer. Take the transcript of the video and provide a summary within 200 words."
+
+# Extract video code from YouTube URL
 def extract_video_code(youtube_url):
-    pattern = r'(?:v=|\/)([0-9A-Za-z_-]{11}).*'
+    pattern = r'(?:v=|\/)([0-9A-Za-z_-]{11})'
     match = re.search(pattern, youtube_url)
-    
-    if match:
-        return match.group(1)
-    else:
-        return None
+    return match.group(1) if match else None
 
-# Getting the transcript data from YouTube videos
-def extract_transcript_details(youtube_video_url, target_language):
+# Fetch transcript or subtitles in any available language
+def fetch_transcript(video_id):
     try:
-        video_id = extract_video_code(youtube_video_url)
-        if not video_id:
-            raise ValueError("Invalid YouTube URL")
-        
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-        
-        transcript_text = ""
-        found_transcript = False
-        
-        for transcript in transcript_list:
-            if transcript.language_code == target_language:
-                transcript_data = transcript.fetch()
-                for i in transcript_data:
-                    transcript_text += " " + i["text"]
-                found_transcript = True
-                break  # Use the first suitable transcript found
-            elif transcript.is_translatable and transcript.language_code != target_language:
-                # Translate if needed
-                translated_transcript = transcript.translate(target_language)
-                transcript_data = translated_transcript.fetch()
-                for i in transcript_data:
-                    transcript_text += " " + i["text"]
-                found_transcript = True
-                break  # Use the first suitable transcript found
-        
-        if not found_transcript:
-            raise NoTranscriptFound("No suitable transcript found for the specified language.")
-        
-        return transcript_text
+        transcripts = YouTubeTranscriptApi.list_transcripts(video_id)
+        for transcript in transcripts:
+            return transcript.fetch(), transcript.language_code
+    except (NoTranscriptFound, TranscriptsDisabled):
+        return None, None
 
-    except NoTranscriptFound as e:
-        st.error(e)
-        return None
-    except ValueError as ve:
-        st.error(ve)
-        return None
+# Retry decorator
+def retry(func, retries=3, delay=2):
+    for i in range(retries):
+        try:
+            return func()
+        except Exception as e:
+            if i < retries - 1:
+                time.sleep(delay)  # Wait before retrying
+            else:
+                raise e
+
+# Extract and concatenate transcript text
+def extract_transcript_details(youtube_video_url, target_language):
+    video_id = extract_video_code(youtube_video_url)
+    if not video_id:
+        st.error("Invalid YouTube URL")
+        return None, None
+
+    try:
+        transcript_data, transcript_language = retry(lambda: fetch_transcript(video_id))
+        if transcript_data:
+            transcript_text = " ".join(item["text"] for item in transcript_data)
+            if target_language and target_language != 'en':
+                translator = Translator()
+                transcript_text = retry(lambda: translator.translate(transcript_text, dest=target_language).text)
+            return transcript_text, transcript_language
+        else:
+            st.error("No transcripts or subtitles available for this video.")
+            return None, None
     except Exception as e:
-        st.error(f"An error occurred: {e}")
+        st.error(f"An error occurred: {str(e)}")
+        return None, None
+
+# Generate summary from transcript using Google Generative AI
+def generate_gemini_content(transcript_text, prompt):
+    try:
+        model = genai.GenerativeModel("gemini-pro")
+        response = model.generate_content(prompt + transcript_text)
+        return response.text
+    except Exception as e:
+        st.error(f"Failed to generate summary: {str(e)}")
         return None
 
-# Generate summary based on the prompt 
-def generate_gemini_content(transcript_text, prompt):
-    model = genai.GenerativeModel("gemini-pro")
-    response = model.generate_content(prompt + transcript_text)
-    return response.text
-
-# Translate summary into the desired language
-def translate_summary(summary, target_language):
+# Translate text to the target language
+def translate_text(text, target_language):
     if target_language == 'en':
-        return summary  # No translation needed
-    translator = Translator()
-    translation = translator.translate(summary, dest=target_language)
-    return translation.text
+        return text  # No translation needed if target language is English
+    try:
+        translator = Translator()
+        translated = retry(lambda: translator.translate(text, dest=target_language).text)
+        return translated
+    except Exception as e:
+        st.error(f"Failed to translate text: {str(e)}")
+        return text
 
-# Define the prompt variable
-prompt = "Act as a YouTube video summarizer which will take the transcript of the video and provide the summary within 200 words. Provide the summary of the text given."
-
+# Streamlit app UI
 st.title("YouTube Transcript to Detailed Notes Converter")
 youtube_link = st.text_input("Enter your YouTube Link:")
-target_language = st.text_input("Enter the language code for translation (e.g., 'es' for Spanish, 'fr' for French, 'en' for English):", value='en')
+target_language = st.text_input("Enter the target language code (e.g., 'en' for English, 'es' for Spanish):", value="en")
 
-if youtube_link:
+if youtube_link and target_language:
     video_id = extract_video_code(youtube_link)
-    st.image(f"http://img.youtube.com/vi/{video_id}/0.jpg", use_column_width=True)
+    if video_id:
+        st.image(f"http://img.youtube.com/vi/{video_id}/0.jpg", use_column_width=True)
 
-if st.button("Get Detailed Notes"):
-    transcript_text = extract_transcript_details(youtube_link, target_language)
+    if st.button("Get Detailed Notes"):
+        transcript_text, transcript_language = extract_transcript_details(youtube_link, target_language)
 
-    if transcript_text:
-        summary = generate_gemini_content(transcript_text, prompt)
-        summary = translate_summary(summary, target_language)
-        
-        st.markdown("## Detailed Notes:")
-        st.write(summary)
+        if transcript_text:
+            summary = generate_gemini_content(transcript_text, prompt)
+            if summary:
+                summary = translate_text(summary, target_language)
+                st.markdown("## Detailed Notes:")
+                st.write(f"**Language:** {target_language}")
+                st.write(summary)
