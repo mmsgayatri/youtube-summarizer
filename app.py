@@ -19,7 +19,7 @@ prompt = "Act as a YouTube video summarizer. Take the transcript of the video an
 
 # Extract video code from YouTube URL
 def extract_video_code(youtube_url):
-  pattern = r'(?:v=|\/)([0-9A-Za-z_-]{11})'  # Removed the non-breaking space character
+  pattern = r'(?:v=|\/)([0-9A-Za-z_-]{11})'
   match = re.search(pattern, youtube_url)
   return match.group(1) if match else None
 
@@ -95,4 +95,15 @@ target_language = st.text_input("Enter the target language code (e.g., 'en' for 
 if youtube_link and target_language:
   video_id = extract_video_code(youtube_link)
   if video_id:
-    st.image(f"http://img.youtube.com/vi/{video_id}/0.jpg", use_container_width=
+    st.image(f"http://img.youtube.com/vi/{video_id}/0.jpg", use_container_width=True)
+
+  if st.button("Get Detailed Notes"):
+    transcript_text, transcript_language = extract_transcript_details(youtube_link, target_language)
+
+    if transcript_text:
+      summary = generate_gemini_content(transcript_text, prompt)
+      if summary:
+        summary = translate_text(summary, target_language)
+        st.markdown("## Detailed Notes:")
+        st.write(f"**Language:** {target_language}")
+        st.write(summary)
